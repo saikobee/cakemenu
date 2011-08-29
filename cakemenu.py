@@ -6,6 +6,8 @@ import cairo
 import pango
 import pangocairo
 
+import random
+
 from conf import conf
 
 class CakeMenu(gtk.DrawingArea):
@@ -21,6 +23,7 @@ class CakeMenu(gtk.DrawingArea):
         self.h  = 0
 
         self.input = ""
+        self.selected_num = 1
 
     def do_expose_event(self, event):
         self.cr = self.window.cairo_create()
@@ -38,42 +41,59 @@ class CakeMenu(gtk.DrawingArea):
         self.w, self.h = self.window.get_size()
         self.draw()
 
+    def random_string(self):
+        return "%-16x" % random.randrange(0xFFffFFffFFffFFff)
+
     def draw(self):
         w  = self.w
         h  = self.h
         cr = self.cr
         pc = self.pc
 
+        random.seed(0xdeadbeef)
+
+        desc   = pango.FontDescription(conf.font)
+        layout = pc.create_layout()
+        layout.set_font_description(desc)
+
         # Draw background
         cr.set_source_rgb(*conf.bg_norm)
         cr.rectangle(0, 0, w, h)
         cr.fill()
 
-        # Draw dividing lines
-        cr.set_source_rgb(*conf.hl)
-        for y in xrange(conf.size, h, conf.size):
-            #cr.move_to(0,     y)
-            #cr.line_to(w - 1, y)
-            #cr.stroke()
-            cr.rectangle(
-                0, y,
-                w, 1
-            )
-            cr.fill()
-
         # Draw fake selected item
+        cr.translate(0, self.selected_num * conf.size)
         cr.set_source_rgb(*conf.bg_sel)
         cr.rectangle(
-            0, 4 * conf.size + 1,
-            w,     conf.size - 1
+            0, 1,
+            w, conf.size,
         )
         cr.fill()
+        cr.translate(0, -self.selected_num * conf.size)
+
+        # Draw the text
+        cr.set_source_rgb(*conf.fg_norm)
+        for y in xrange(conf.size, h, conf.size):
+            cr.translate(conf.pad, conf.pad + y)
+            layout.set_text(self.random_string())
+            pc.update_layout(layout)
+            pc.show_layout(layout)
+            cr.translate(-conf.pad, -(conf.pad + y))
+
+        # Draw current input
+        cr.translate(conf.pad, conf.pad)
+        cr.set_source_rgb(*conf.fg_norm)
+        layout.set_text(self.input)
+        pc.update_layout(layout)
+        pc.show_layout(layout)
+        cr.translate(-conf.pad, -conf.pad)
 
     def on_key_press(self, widget, event):
-        # Printing ASCII range
         k = event.keyval
+        # Printing ASCII range
         if 32 <= k <= 126:
-            self.input += event.string
+            if not event.state & gtk.gdk.CONTROL_MASK:
+                self.input += event.string
         elif k == gtk.keysyms.Escape:
             self.input = ""
             self.finish()
@@ -81,6 +101,13 @@ class CakeMenu(gtk.DrawingArea):
             self.finish()
         elif k == gtk.keysyms.BackSpace:
             self.input = self.input[0:-1]
+        elif k == gtk.keysyms.Tab or k == gtk.keysyms.ISO_Left_Tab:
+            if event.state & gtk.gdk.SHIFT_MASK:
+                self.selected_num -= 1
+            else:
+                self.selected_num += 1
+
+        self.queue_draw()
 
     def finish(self):
         if self.input != "":
