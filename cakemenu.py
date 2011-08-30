@@ -7,6 +7,7 @@ import pango
 import pangocairo
 
 import random
+import string
 
 from conf import conf
 
@@ -29,20 +30,23 @@ class CakeMenu(gtk.DrawingArea):
         self.cr = self.window.cairo_create()
         self.pc = pangocairo.CairoContext(self.cr)
 
-        a = event.area
-        self.cr.rectangle(
-            a.x,
-            a.y,
-            a.width,
-            a.height
-        )
-        self.cr.clip()
+        #a = event.area
+        #self.cr.rectangle(
+        #    a.x,
+        #    a.y,
+        #    a.width,
+        #    a.height
+        #)
+        #self.cr.clip()
 
         self.w, self.h = self.window.get_size()
         self.draw()
 
     def random_string(self):
-        return "%-16x" % random.randrange(0xFFffFFffFFffFFff)
+        times = xrange(random.randrange(4, 30))
+        src   = string.ascii_letters
+        ret   = [random.choice(src) for x in times]
+        return "".join(ret)
 
     def draw(self):
         w  = self.w
@@ -65,7 +69,7 @@ class CakeMenu(gtk.DrawingArea):
         cr.translate(0, self.selected_num * conf.size)
         cr.set_source_rgb(*conf.bg_sel)
         cr.rectangle(
-            0, 1,
+            0, 0,
             w, conf.size,
         )
         cr.fill()
