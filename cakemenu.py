@@ -1,10 +1,10 @@
 #!/usr/bin/python2
 import pygtk; pygtk.require('2.0')
-import gtk
+import pangocairo
 import gobject
 import cairo
 import pango
-import pangocairo
+import gtk
 
 import random
 import string
@@ -18,6 +18,7 @@ class CakeMenu(gtk.DrawingArea):
     def __init__(self):
         gtk.DrawingArea.__init__(self)
 
+        self.layout = None
         self.cr = None
         self.pc = None
         self.w  = 0
@@ -30,14 +31,14 @@ class CakeMenu(gtk.DrawingArea):
         self.cr = self.window.cairo_create()
         self.pc = pangocairo.CairoContext(self.cr)
 
-        #a = event.area
-        #self.cr.rectangle(
-        #    a.x,
-        #    a.y,
-        #    a.width,
-        #    a.height
-        #)
-        #self.cr.clip()
+        a = event.area
+        self.cr.rectangle(
+            a.x,
+            a.y,
+            a.width,
+            a.height
+        )
+        self.cr.clip()
 
         self.w, self.h = self.window.get_size()
         self.draw()
@@ -51,46 +52,61 @@ class CakeMenu(gtk.DrawingArea):
     def draw(self):
         w  = self.w
         h  = self.h
-        cr = self.cr
-        pc = self.pc
 
         random.seed(0xdeadbeef)
 
-        desc   = pango.FontDescription(conf.font)
-        layout = pc.create_layout()
-        layout.set_font_description(desc)
+        desc = pango.FontDescription(conf.font)
+        self.layout = self.pc.create_layout()
+        self.layout.set_font_description(desc)
 
-        # Draw background
-        cr.set_source_rgb(*conf.bg_norm)
-        cr.rectangle(0, 0, w, h)
-        cr.fill()
+        self.draw_bg()
+        self.draw_sel()
+        self.draw_text()
+        self.draw_input()
 
-        # Draw fake selected item
-        cr.translate(0, self.selected_num * conf.size)
-        cr.set_source_rgb(*conf.bg_sel)
-        cr.rectangle(
+    def draw_bg(self):
+        w  = self.w
+        h  = self.h
+
+        self.cr.set_source_rgb(*conf.bg_norm)
+        self.cr.rectangle(0, 0, w, h)
+        self.cr.fill()
+
+    def draw_sel(self):
+        w  = self.w
+        h  = self.h
+
+        self.cr.translate(0, self.selected_num * conf.size)
+        self.cr.set_source_rgb(*conf.bg_sel)
+        self.cr.rectangle(
             0, 0,
             w, conf.size,
         )
-        cr.fill()
-        cr.translate(0, -self.selected_num * conf.size)
+        self.cr.fill()
+        self.cr.translate(0, -self.selected_num * conf.size)
 
-        # Draw the text
-        cr.set_source_rgb(*conf.fg_norm)
+    def draw_text(self):
+        w = self.w
+        h = self.h
+
+        self.cr.set_source_rgb(*conf.fg_norm)
         for y in xrange(conf.size, h, conf.size):
-            cr.translate(conf.pad, conf.pad + y)
-            layout.set_text(self.random_string())
-            pc.update_layout(layout)
-            pc.show_layout(layout)
-            cr.translate(-conf.pad, -(conf.pad + y))
+            self.cr.translate(conf.pad, conf.pad + y)
+            self.layout.set_text(self.random_string())
+            self.pc.update_layout(self.layout)
+            self.pc.show_layout(self.layout)
+            self.cr.translate(-conf.pad, -(conf.pad + y))
 
-        # Draw current input
-        cr.translate(conf.pad, conf.pad)
-        cr.set_source_rgb(*conf.fg_norm)
-        layout.set_text(self.input)
-        pc.update_layout(layout)
-        pc.show_layout(layout)
-        cr.translate(-conf.pad, -conf.pad)
+    def draw_input(self):
+        w = self.w
+        h = self.h
+
+        self.cr.translate(conf.pad, conf.pad)
+        self.cr.set_source_rgb(*conf.fg_norm)
+        self.layout.set_text(self.input)
+        self.pc.update_layout(self.layout)
+        self.pc.show_layout(self.layout)
+        self.cr.translate(-conf.pad, -conf.pad)
 
     def on_key_press(self, widget, event):
         k = event.keyval
