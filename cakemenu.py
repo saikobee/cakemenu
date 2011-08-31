@@ -6,14 +6,12 @@ import cairo
 import pango
 import gtk
 
-import random
-import string
+import sys
 
 from conf import conf
 
 class CakeMenu(gtk.DrawingArea):
     __gsignals__ = {"expose-event": "override"}
-
 
     def __init__(self):
         gtk.DrawingArea.__init__(self)
@@ -28,10 +26,33 @@ class CakeMenu(gtk.DrawingArea):
         self.size = 0
         self.pad  = 0
 
-        self.input        = ""
-        self.selected_num = 0
-        self.all_choices  = [self.random_string() for x in xrange(100)]
-        self.choices      = self.all_choices
+        self.input         = ""
+        self.selected_num  = 0
+        self.all_choices   = sys.stdin.readlines()
+        self.all_choices   = map(lambda s: s.rstrip("\n"), self.all_choices)
+        self.all_choices   = list(set(self.all_choices))
+        self.choices       = self.all_choices
+        self.choices_limit = 999
+
+        conf.bg_sel = self.hex_to_color(conf.bg_sel)
+        conf.fg_sel = self.hex_to_color(conf.fg_sel)
+
+        conf.bg_norm = self.hex_to_color(conf.bg_norm)
+        conf.fg_norm = self.hex_to_color(conf.fg_norm)
+
+    def hex_to_color(self, hex_str):
+        hex_str = hex_str.lstrip("#")
+        r = hex_str[0:2]
+        g = hex_str[2:4]
+        b = hex_str[4:6]
+        r = int(r, 16)
+        g = int(g, 16)
+        b = int(b, 16)
+        r /= 255.0
+        g /= 255.0
+        b /= 255.0
+
+        return (r, g, b)
 
     def do_expose_event(self, event):
         self.cr = self.window.cairo_create()
@@ -50,17 +71,9 @@ class CakeMenu(gtk.DrawingArea):
         self.w, self.h = self.window.get_size()
         self.draw()
 
-    def random_string(self):
-        times = xrange(random.randrange(4, 30))
-        src   = string.ascii_letters
-        ret   = [random.choice(src) for x in times]
-        return "".join(ret)
-
     def draw(self):
         w  = self.w
         h  = self.h
-
-        random.seed(0xdeadbeef)
 
         desc = pango.FontDescription(conf.font)
         self.layout = self.pc.create_layout()
@@ -71,10 +84,12 @@ class CakeMenu(gtk.DrawingArea):
         self.text_size_px = pango.PIXELS(ascent + descent)
         self.size = self.text_size_px + self.pad + self.pad
         self.pad  = pango.PIXELS(descent)
+        self.choices_limit = (h / self.size) - 1
 
         self.draw_bg()
-        self.draw_sel()
         self.draw_text()
+        self.draw_sel()
+        self.draw_sel_text()
         self.draw_input()
 
     def draw_bg(self):
@@ -110,12 +125,31 @@ class CakeMenu(gtk.DrawingArea):
             self.pc.show_layout(self.layout)
             self.cr.translate(-self.pad, -(self.pad + y))
 
+    def draw_sel_text(self):
+        if self.selected_num < 0:
+            return
+
+        w = self.w
+        h = self.h
+
+        self.cr.set_source_rgb(*conf.fg_sel)
+        choice = self.choices[self.selected_num]
+        y      = self.size + self.selected_num * self.size
+        self.cr.translate(self.pad, self.pad + y)
+        self.layout.set_text(choice)
+        self.pc.update_layout(self.layout)
+        self.pc.show_layout(self.layout)
+        self.cr.translate(-self.pad, -(self.pad + y))
+
     def draw_input(self):
         w = self.w
         h = self.h
 
         self.cr.translate(self.pad, self.pad)
-        self.cr.set_source_rgb(*conf.fg_norm)
+        if self.selected_num < 0:
+            self.cr.set_source_rgb(*conf.fg_sel)
+        else:
+            self.cr.set_source_rgb(*conf.fg_norm)
         self.layout.set_text(self.input)
         self.pc.update_layout(self.layout)
         self.pc.show_layout(self.layout)
@@ -126,6 +160,7 @@ class CakeMenu(gtk.DrawingArea):
             lambda choice: self.input in choice,
             self.all_choices
         )
+        self.choices = self.choices[:self.choices_limit]
         self.selected_num = 0
         if self.choices == []:
             self.selected_num = -1
