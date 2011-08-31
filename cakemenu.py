@@ -21,15 +21,22 @@ class CakeMenu(gtk.DrawingArea):
         self.layout = None
         self.cr = None
         self.pc = None
+        self.px = None
         self.w  = 0
         self.h  = 0
 
-        self.input = ""
-        self.selected_num = 1
+        self.size = 0
+        self.pad  = 0
+
+        self.input        = ""
+        self.selected_num = 0
+        self.all_choices  = [self.random_string() for x in xrange(100)]
+        self.choices      = self.all_choices
 
     def do_expose_event(self, event):
         self.cr = self.window.cairo_create()
         self.pc = pangocairo.CairoContext(self.cr)
+        self.px = self.get_pango_context()
 
         a = event.area
         self.cr.rectangle(
@@ -58,6 +65,12 @@ class CakeMenu(gtk.DrawingArea):
         desc = pango.FontDescription(conf.font)
         self.layout = self.pc.create_layout()
         self.layout.set_font_description(desc)
+        metrics = self.px.get_metrics(desc)
+        ascent  = metrics.get_ascent()
+        descent = metrics.get_descent()
+        self.text_size_px = pango.PIXELS(ascent + descent)
+        self.size = self.text_size_px + self.pad + self.pad
+        self.pad  = pango.PIXELS(descent)
 
         self.draw_bg()
         self.draw_sel()
@@ -76,37 +89,46 @@ class CakeMenu(gtk.DrawingArea):
         w  = self.w
         h  = self.h
 
-        self.cr.translate(0, self.selected_num * conf.size)
+        self.cr.translate(0, (1 + self.selected_num) * self.size)
         self.cr.set_source_rgb(*conf.bg_sel)
         self.cr.rectangle(
             0, 0,
-            w, conf.size,
+            w, self.size,
         )
         self.cr.fill()
-        self.cr.translate(0, -self.selected_num * conf.size)
+        self.cr.translate(0, -(1 + self.selected_num) * self.size)
 
     def draw_text(self):
         w = self.w
         h = self.h
 
         self.cr.set_source_rgb(*conf.fg_norm)
-        for y in xrange(conf.size, h, conf.size):
-            self.cr.translate(conf.pad, conf.pad + y)
-            self.layout.set_text(self.random_string())
+        for choice, y in zip(self.choices, xrange(self.size, h, self.size)):
+            self.cr.translate(self.pad, self.pad + y)
+            self.layout.set_text(choice)
             self.pc.update_layout(self.layout)
             self.pc.show_layout(self.layout)
-            self.cr.translate(-conf.pad, -(conf.pad + y))
+            self.cr.translate(-self.pad, -(self.pad + y))
 
     def draw_input(self):
         w = self.w
         h = self.h
 
-        self.cr.translate(conf.pad, conf.pad)
+        self.cr.translate(self.pad, self.pad)
         self.cr.set_source_rgb(*conf.fg_norm)
         self.layout.set_text(self.input)
         self.pc.update_layout(self.layout)
         self.pc.show_layout(self.layout)
-        self.cr.translate(-conf.pad, -conf.pad)
+        self.cr.translate(-self.pad, -self.pad)
+
+    def search(self):
+        self.choices = filter(
+            lambda choice: self.input in choice,
+            self.all_choices
+        )
+        self.selected_num = 0
+        if self.choices == []:
+            self.selected_num = -1
 
     def on_key_press(self, widget, event):
         k = event.keyval
@@ -114,6 +136,7 @@ class CakeMenu(gtk.DrawingArea):
         if 32 <= k <= 126:
             if not event.state & gtk.gdk.CONTROL_MASK:
                 self.input += event.string
+                self.search()
         elif k == gtk.keysyms.Escape:
             self.input = ""
             self.finish()
@@ -121,17 +144,23 @@ class CakeMenu(gtk.DrawingArea):
             self.finish()
         elif k == gtk.keysyms.BackSpace:
             self.input = self.input[0:-1]
+            self.search()
         elif k == gtk.keysyms.Tab or k == gtk.keysyms.ISO_Left_Tab:
             if event.state & gtk.gdk.SHIFT_MASK:
                 self.selected_num -= 1
             else:
                 self.selected_num += 1
 
+            self.input = self.choices[self.selected_num]
+
         self.queue_draw()
 
     def finish(self):
         if self.input != "":
-            print self.input
+            if self.selected_num == -1:
+                print self.input
+            else:
+                print self.choices[self.selected_num]
         gtk.main_quit()
 
     def on_delete(self, widget, event):

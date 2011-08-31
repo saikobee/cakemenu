@@ -5,8 +5,4 @@ class conf(object):
     bg_norm = (0.0, 0.0, 0.0)
     fg_norm = (0.5, 0.5, 0.5)
 
-    pad = 10
-
-    size = 30
-
     font = "Mono Bold 12"
