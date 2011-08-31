@@ -149,7 +149,7 @@ class CakeMenu(gtk.DrawingArea):
             self.cr.set_source_rgb(*conf.fg_sel)
         else:
             self.cr.set_source_rgb(*conf.fg_norm)
-        self.layout.set_text(self.input)
+        self.layout.set_text("> {input}".format(input=self.input))
         self.pc.update_layout(self.layout)
         self.pc.show_layout(self.layout)
         self.cr.translate(-self.pad, -self.pad)
