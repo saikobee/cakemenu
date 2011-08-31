@@ -30,7 +30,6 @@ class CakeMenu(gtk.DrawingArea):
         self.selected_num  = 0
         self.all_choices   = sys.stdin.readlines()
         self.all_choices   = map(lambda s: s.rstrip("\n"), self.all_choices)
-        self.all_choices   = list(set(self.all_choices))
         self.choices       = self.all_choices
         self.choices_limit = 999
 
@@ -156,14 +155,18 @@ class CakeMenu(gtk.DrawingArea):
         self.cr.translate(-self.pad, -self.pad)
 
     def search(self):
-        self.choices = filter(
-            lambda choice: self.input in choice,
-            self.all_choices
+        items = self.all_choices
+        self.choices = (
+            sorted([item for item in items if item.find(self.input) == 0]) +
+            sorted([item for item in items if item.find(self.input) >  0])
         )
         self.choices = self.choices[:self.choices_limit]
         self.selected_num = 0
         if self.choices == []:
             self.selected_num = -1
+
+    def reset_choices(self):
+        self.choices = self.all_choices
 
     def on_key_press(self, widget, event):
         k = event.keyval
@@ -179,7 +182,10 @@ class CakeMenu(gtk.DrawingArea):
             self.finish()
         elif k == gtk.keysyms.BackSpace:
             self.input = self.input[0:-1]
-            self.search()
+            if self.input == "":
+                self.reset_choices()
+            else:
+                self.search()
         elif k == gtk.keysyms.Tab or k == gtk.keysyms.ISO_Left_Tab:
             if event.state & gtk.gdk.SHIFT_MASK:
                 self.selected_num -= 1

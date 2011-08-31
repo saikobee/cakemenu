@@ -1,1 +1,4 @@
-exec "$(lsx $(echo "$PATH" | tr ":" " "))"
+#!/bin/bash
+IFS=":"
+cmd=$(lsx $PATH | sort -u | cakemenu)
+exec $cmd
