@@ -186,12 +186,14 @@ class CakeMenu(gtk.DrawingArea):
                 self.reset_choices()
             else:
                 self.search()
-        elif k == gtk.keysyms.Tab or k == gtk.keysyms.ISO_Left_Tab:
-            if event.state & gtk.gdk.SHIFT_MASK:
-                self.selected_num -= 1
-            else:
-                self.selected_num += 1
+        elif k in (gtk.keysyms.Tab, gtk.keysyms.ISO_Left_Tab):
+            shift = event.state & gtk.gdk.SHIFT_MASK
 
+            if shift:   self.selected_num -= 1
+            else:       self.selected_num += 1
+
+            self.selected_num %= len(self.choices)
+            self.selected_num %= self.choices_limit
             self.input = self.choices[self.selected_num]
 
         self.queue_draw()
