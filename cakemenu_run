@@ -1,4 +1,6 @@
 #!/bin/bash
+old=$IFS
 IFS=":"
 cmd=$(lsx $PATH | sort -u | cakemenu)
+IFS=$old
 exec $cmd
