@@ -1,6 +1,10 @@
 #!/bin/bash
-old=$IFS
-IFS=":"
-cmd=$(lsx $PATH | sort -u | cakemenu)
-IFS=$old
+
+Find_Executables() {
+    echo -n "$PATH" | \
+    xargs -d ":" -I "{}" \
+    find -L "{}" -maxdepth 1 -type f -executable -readable -printf "%f\n"
+}
+
+cmd=$(Find_Executables | sort -u | cakemenu)
 exec $cmd
